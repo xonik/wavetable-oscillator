@@ -36,7 +36,7 @@ void onControlChange(byte channel, byte control, byte value) {
 }
 
 void onPitchChange(byte channel, int bend) {
-  // bend is 0-16383, center is 8192
+  // bend may be signed (-8192..8191) or unsigned (0..16383).
   controller.setPitchBend(bend);
   Serial.print("Pitch Bend = ");
   Serial.println(bend);

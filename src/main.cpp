@@ -41,17 +41,15 @@ void setup() {
   generateWavetables();
 
   // Populate wavetable bank
-  wavetableBank[0] = waveSine;
-  wavetableBank[1] = waveTriangle;
-  wavetableBank[2] = waveSaw;
-  wavetableBank[3] = waveSquare;
-  /*
+  wavetableBank[0] = waveTable0;
+  wavetableBank[1] = waveTable1;
+  wavetableBank[2] = waveTable2;
+  wavetableBank[3] = waveTable3;
   wavetableBank[4] = waveTable4;
   wavetableBank[5] = waveTable5;
   wavetableBank[6] = waveTable6;
   wavetableBank[7] = waveTable7;
-  */
-  numTables = 4;
+  numTables = 8;
 
   // Initialize audio memory
   AudioMemory(8);

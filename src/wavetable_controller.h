@@ -13,10 +13,17 @@
 class WavetableController {
 public:
   static constexpr int MAX_HELD_NOTES = 16;
+  static constexpr float PITCH_BEND_RANGE_SEMITONES = 2.0f;
+
+  enum class PitchBendEncoding {
+    Unknown,
+    Signed8192,   // -8192..8191, center 0
+    Unsigned16384 // 0..16383, center 8192
+  };
 
   WavetableController(WavetableOsc &osc)
-      : osc(osc), currentNote(69), pitchBendValue(8192), heldNoteCount(0),
-        active(false) {}
+      : osc(osc), currentNote(69), pitchBendSemitones(0.0f), heldNoteCount(0),
+        active(false), pitchBendEncoding(PitchBendEncoding::Unknown) {}
 
   WavetableOsc &getOscillator() { return osc; }
 
@@ -95,7 +102,31 @@ public:
 
   void setPitchBend(int value) {
     __disable_irq();
-    pitchBendValue = value;
+
+    // Teensy MIDI pitch bend callbacks may provide either signed
+    // (-8192..8191) or unsigned (0..16383) values depending on stack.
+    // Detect once and default to signed in the ambiguous 0..8191 range,
+    // which avoids startup drops when center is reported as 0.
+    if (pitchBendEncoding == PitchBendEncoding::Unknown) {
+      if (value < 0) {
+        pitchBendEncoding = PitchBendEncoding::Signed8192;
+      } else if (value > 8191) {
+        pitchBendEncoding = PitchBendEncoding::Unsigned16384;
+      } else {
+        pitchBendEncoding = PitchBendEncoding::Signed8192;
+      }
+    }
+
+    float normalized = 0.0f;
+    if (pitchBendEncoding == PitchBendEncoding::Signed8192) {
+      int clamped = constrain(value, -8192, 8191);
+      normalized = clamped / 8192.0f;
+    } else {
+      int clamped = constrain(value, 0, 16383);
+      normalized = (clamped - 8192) / 8192.0f;
+    }
+
+    pitchBendSemitones = normalized * PITCH_BEND_RANGE_SEMITONES;
     updateFrequency();
     __enable_irq();
   }
@@ -103,19 +134,18 @@ public:
 private:
   WavetableOsc &osc;
   volatile int currentNote;
-  volatile int pitchBendValue;
+  volatile float pitchBendSemitones;
   volatile int heldNotes[MAX_HELD_NOTES];
   volatile int heldNoteCount;
   volatile bool active;
+  volatile PitchBendEncoding pitchBendEncoding;
 
   void updateFrequency() {
     // Convert MIDI note to base frequency
     float freq = midiNoteToFreq(currentNote);
 
-    // Apply pitch bend: range 0-16383, center is 8192
-    // Standard range is +/- 2 semitones
-    float bendSemitones = (pitchBendValue - 8192) / 4096.0f;
-    freq *= powf(2.0f, bendSemitones / 12.0f);
+    // Apply pitch bend (already normalized to semitones).
+    freq *= powf(2.0f, pitchBendSemitones / 12.0f);
 
     // Set raw frequency on oscillator
     osc.setFrequency(freq);
