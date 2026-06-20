@@ -60,7 +60,7 @@ public:
     if (heldNoteCount == 1) {
       active = true;
       osc.setActive(true);
-      osc.setVelocity(midiVelocity / 127.0f);
+      osc.setVelocity(1.0f);
     }
 
     updateFrequency();

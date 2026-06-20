@@ -5,6 +5,12 @@
 #include <Audio.h>
 #include <math.h>
 
+struct OscProfileSnapshot {
+  uint32_t blockCount;
+  uint64_t totalCycles;
+  uint32_t maxCyclesPerBlock;
+};
+
 // ---------------------------------------------------------------------------
 // WavetableOsc - Core wavetable oscillator with wavetable morphing
 // Operates on raw frequency input (pitch bend calculations handled externally)
@@ -17,7 +23,8 @@ public:
   WavetableOsc()
       : AudioStream(0, nullptr), tableBank(nullptr), tableCount(0),
         tableSize(1024), tableSizeMask(1023), phase(0), increment(0),
-        morphPos(0.0f), morphTargetPos(0.0f), active(false), velocity(1.0f) {}
+        morphPos(0.0f), morphTargetPos(0.0f), active(false), velocity(1.0f),
+        profileBlockCount(0), profileTotalCycles(0), profileMaxCycles(0) {}
 
   void setWavetables(const int16_t **tables, int count, int size) {
     __disable_irq();
@@ -56,11 +63,27 @@ public:
     __enable_irq();
   }
 
+  OscProfileSnapshot consumeProfileSnapshot() {
+    __disable_irq();
+    OscProfileSnapshot snapshot = {
+        profileBlockCount,
+        profileTotalCycles,
+        profileMaxCycles,
+    };
+    profileBlockCount = 0;
+    profileTotalCycles = 0;
+    profileMaxCycles = 0;
+    __enable_irq();
+    return snapshot;
+  }
+
   virtual void update() override {
     audio_block_t *block = allocate();
     if (!block || !tableBank) {
       return;
     }
+
+    const uint32_t startCycles = ARM_DWT_CYCCNT;
 
     // Smooth morphPos towards target
     static constexpr float MORPH_ALPHA = 0.1f;
@@ -70,6 +93,7 @@ public:
       memset(block->data, 0, sizeof(block->data));
       transmit(block, 0);
       release(block);
+      recordProfileBlock(startCycles);
       return;
     }
 
@@ -102,9 +126,19 @@ public:
 
     transmit(block, 0);
     release(block);
+    recordProfileBlock(startCycles);
   }
 
 private:
+  void recordProfileBlock(uint32_t startCycles) {
+    uint32_t elapsedCycles = ARM_DWT_CYCCNT - startCycles;
+    profileBlockCount++;
+    profileTotalCycles += elapsedCycles;
+    if (elapsedCycles > profileMaxCycles) {
+      profileMaxCycles = elapsedCycles;
+    }
+  }
+
   const int16_t **tableBank;
   volatile int tableCount;
   volatile int tableSize;
@@ -115,6 +149,9 @@ private:
   volatile float morphTargetPos;
   volatile bool active;
   volatile float velocity;
+  volatile uint32_t profileBlockCount;
+  volatile uint64_t profileTotalCycles;
+  volatile uint32_t profileMaxCycles;
 };
 
 #endif

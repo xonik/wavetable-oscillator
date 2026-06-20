@@ -8,7 +8,7 @@
 // Classic procedural waveforms kept separately from AIFF-converted tables
 // ---------------------------------------------------------------------------
 
-static const int CLASSIC_TABLE_SIZE = 1024;
+static const int CLASSIC_TABLE_SIZE = 512;
 
 int16_t classicWaveSine[CLASSIC_TABLE_SIZE];
 int16_t classicWaveTriangle[CLASSIC_TABLE_SIZE];

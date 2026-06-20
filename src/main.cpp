@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Audio.h>
 
+#include "classic_wavetables.h"
 #include "midi_handler.h"
 #include "prophet_vs_wavetables.h"
 #include "wavetable_controller.h"
@@ -29,6 +30,8 @@ AudioConnection patchR(osc, 0, i2sOut, 1);
 static const int MAX_WAVETABLES = 128;
 const int16_t *wavetableBank[MAX_WAVETABLES];
 static int numTables = 0;
+static uint32_t loopIterations = 0;
+static uint32_t lastProfilerReportMs = 0;
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -37,14 +40,19 @@ static int numTables = 0;
 void setup() {
   Serial.begin(115200);
 
+  // Enable DWT cycle counter for lightweight runtime profiling.
+  ARM_DEMCR |= ARM_DEMCR_TRCENA;
+  ARM_DWT_CTRL |= ARM_DWT_CTRL_CYCCNTENA;
+  ARM_DWT_CYCCNT = 0;
+
   // Generate all wavetables
-  generateWavetables();
+  generateClassicWavetables();
 
   // Populate wavetable bank
-  wavetableBank[0] = waveTable0;
-  wavetableBank[1] = waveTable1;
-  wavetableBank[2] = waveTable2;
-  wavetableBank[3] = waveTable3;
+  wavetableBank[0] = classicWaveSine;
+  wavetableBank[1] = classicWaveTriangle;
+  wavetableBank[2] = classicWaveSaw;
+  wavetableBank[3] = classicWaveSquare;
   wavetableBank[4] = waveTable4;
   wavetableBank[5] = waveTable5;
   wavetableBank[6] = waveTable6;
@@ -71,6 +79,38 @@ void setup() {
 // ---------------------------------------------------------------------------
 
 void loop() {
+  loopIterations++;
+
   // Process incoming MIDI messages
   usbMIDI.read();
+
+  uint32_t nowMs = millis();
+  uint32_t elapsedMs = nowMs - lastProfilerReportMs;
+  if (elapsedMs >= 1000) {
+    OscProfileSnapshot profile = osc.consumeProfileSnapshot();
+
+    float seconds = elapsedMs / 1000.0f;
+    float loopsPerSecond = loopIterations / seconds;
+    float blocksPerSecond = profile.blockCount / seconds;
+    float avgCyclesPerBlock =
+        (profile.blockCount > 0)
+            ? ((float)profile.totalCycles / (float)profile.blockCount)
+            : 0.0f;
+    float oscCpuPercent =
+        ((profile.totalCycles / seconds) / (float)F_CPU_ACTUAL) * 100.0f;
+
+    Serial.print("Profiler: loops/s=");
+    Serial.print(loopsPerSecond, 1);
+    Serial.print(" blocks/s=");
+    Serial.print(blocksPerSecond, 1);
+    Serial.print(" avg_cycles/block=");
+    Serial.print(avgCyclesPerBlock, 1);
+    Serial.print(" max_cycles/block=");
+    Serial.print(profile.maxCyclesPerBlock);
+    Serial.print(" osc_cpu_est=%");
+    Serial.println(oscCpuPercent, 2);
+
+    loopIterations = 0;
+    lastProfilerReportMs = nowMs;
+  }
 }
