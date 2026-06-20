@@ -1,0 +1,27 @@
+CompileFlags:
+  CompilationDatabase: .
+  Add:
+    - -I/Users/joakim/.platformio/packages/toolchain-gccarmnoneeabi-teensy/arm-none-eabi/include/c++/11.3.1
+    - -I/Users/joakim/.platformio/packages/toolchain-gccarmnoneeabi-teensy/arm-none-eabi/include/c++/11.3.1/arm-none-eabi/thumb/v7e-m+dp/hard
+    - -I/Users/joakim/.platformio/packages/toolchain-gccarmnoneeabi-teensy/arm-none-eabi/include/c++/11.3.1/backward
+    - -I/Users/joakim/.platformio/packages/toolchain-gccarmnoneeabi-teensy/lib/gcc/arm-none-eabi/11.3.1/include
+    - -I/Users/joakim/.platformio/packages/toolchain-gccarmnoneeabi-teensy/lib/gcc/arm-none-eabi/11.3.1/include-fixed
+    - -I/Users/joakim/.platformio/packages/toolchain-gccarmnoneeabi-teensy/arm-none-eabi/include
+    - --target=arm-none-eabi
+    - -Wno-everything
+    - -Wno-error
+    - -isystem
+    - /Users/joakim/.platformio/packages/framework-arduinoteensy/cores/teensy4
+  Remove:
+    - -nostdlib
+    - -Wall
+Diagnostics:
+  Suppress:
+    - "*"
+  UnusedIncludes: None
+  ClangTidy:
+    Remove:
+      - "*"
+  MissingIncludes: None
+Index:
+  Background: Build
