@@ -2,9 +2,9 @@
 #include <Audio.h>
 
 #include "midi_handler.h"
+#include "prophet_vs_wavetables.h"
 #include "wavetable_controller.h"
 #include "wavetable_osc.h"
-#include "wavetables.h"
 
 // Forward declarations of MIDI callbacks defined in midi_callbacks.cpp
 void onNoteOn(byte channel, byte note, byte velocity);
